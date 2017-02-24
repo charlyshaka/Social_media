@@ -11,63 +11,38 @@ api_secret <- "C2Uyt9dN8REdTlTkRBY7gFtMhLgVeNtbpEjefKpiBKO8Ux7ns0"
 access_token <- "831261005850120192-LQ39DWYq0KZOXqwldxMWHwB1AYUgdUv"
 access_token_secret <- "z5PBlltSCwh5wuiXfgE0BHI5aR19QUmvPg0d5TzNeblBF"
 setup_twitter_oauth(api_key,api_secret,access_token,access_token_secret)
+#dump('tweets.df',file=xxx) Crea un archivo .txt en la ruta que ingreses en file
 
-##### LIMPIEZA DE TEXTO PARA USUARIO##############################################
 tweets <- userTimeline("marianaSalas", n = 3200) #Cargar en la variable tweets la informaciÃ³n de todos los twetter que  ella puso
 retweets<-searchTwitter('@marianaSalas',n=3200) #Cargar en la variable retweets la informaciÃ³n de todos los twetter en los que la mencionaron
 tweets.df <- twListToDF(tweets)#hacer un data frame con la informaciÃ³n en tweets
 retweets.df<-twListToDF(retweets)#hacer un data frame con la informaciÃ³n en retweets
 #dump('tweets.df',file=xxx) Crea un archivo .txt en la ruta que ingreses en file
-############# Tweets personales
-myCorpus <- Corpus(VectorSource(tweets.df$text))
-#VectorSource lo que hace es poner en un  vector el data frame, es decir, cada tweets es una entrada del vector.
-#La function Corpus convierte cada entrada del vector en una lista.
 
-myCorpus <- tm_map(myCorpus, content_transformer(tolower))#Lo que hace tm_map es que al archivo le hace tal cambio
-#el cambio content_transformer(tolower) es que lo convierte en un archivo de texto plano
-
-removeURL <- function(x) gsub("http[^[:space:]]*", "", x) # Remueve el Url de los tweets 
-myCorpus <- tm_map(myCorpus, content_transformer(removeURL))# Remueve el Url de los tweets 
-
-# eliminar aparte de las letras inglesas o nada de espacio
+texttweets<-tweets.df$text
+removegraph<-function(x) gsub("[^[:graph:]]", " ",x)
+texttweets<-removegraph(texttweets)
+removeURL <- function(x) gsub("http[^[:space:]]*", "", x)
+texttweets<-removeURL(texttweets)
 removeNumPunct <- function(x) gsub("[^[:alpha:][:space:]]*", "", x)
-myCorpus <- tm_map(myCorpus, content_transformer(removeNumPunct))
-
-# Remueve palabras como pronombres y articulos.
-myStopwords <- c(stopwords("spanish"), "un","la","el")
-myCorpus <- tm_map(myCorpus, removeWords, myStopwords)
-
-# remove extra el espacio extra
-myCorpus <- tm_map(myCorpus, stripWhitespace)
-myCorpusCopy <- myCorpus
-myCorpus <- tm_map(myCorpus, stemDocument)
+texttweets<-removeNumPunct(texttweets)
+texttweets<-stemDocument(texttweets)
+myStopwords <- c(stopwords("spanish"), "un","la","el", "marianasalas")
+texttweets<-removeWords(texttweets,myStopwords)
+texttweets<-stripWhitespace(texttweets)
+texttweets<-tolower(texttweets)
+texttweets<-removeWords(texttweets,myStopwords)
 
 
-########### LIMPIEZA DE TEXTO PARA MENSIONES##########################################
-myCorpusr <- Corpus(VectorSource(retweets.df$text))
-#VectorSource lo que hace es poner en un  vector el data frame, es decir, cada tweets es una entrada del vector.
-#La function Corpus convierte cada entrada del vector en una lista.
-
-myCorpusr <- tm_map(myCorpusr, content_transformer(tolower))#Lo que hace tm_map es que al archivo le hace tal cambio
-#el cambio content_transformer(tolower) es que lo convierte en un archivo de texto plano
-
-removeURLr <- function(x) gsub("http[^[:space:]]*", "", x) # Remueve el Url de los tweets 
-myCorpus <- tm_map(myCorpusr, content_transformer(removeURLr))# Remueve el Url de los tweets 
-
-# eliminar aparte de las letras inglesas o nada de espacio
-removeNumPunctr <- function(x) gsub("[^[:alpha:][:space:]]*", "", x)
-myCorpusr <- tm_map(myCorpusr, content_transformer(removeNumPunctr))
-
-# Remueve palabras como pronombres y articulos.
-myStopwordsr <- c(stopwords("spanish"), "un","la","el" ,"epn", "rt" )
-myCorpusr <- tm_map(myCorpusr, removeWords, myStopwordsr)
-
-# remove extra el espacio extra
-myCorpusr <- tm_map(myCorpusr, stripWhitespace)
-myCorpusCopyr <- myCorpusr
-myCorpusr <- tm_map(myCorpusr, stemDocument)
-
-###############################################################
+textretweets<-retweets.df$text
+textretweets<-removegraph(textretweets)
+textretweets<-removeURL(textretweets)
+textretweets<-removeNumPunct(textretweets)
+textretweets<-stemDocument(textretweets)
+textretweets<-removeWords(textretweets,myStopwords)
+textretweets<-stripWhitespace(textretweets)
+textretweets<-tolower(textretweets)
+textretweets<-removeWords(textretweets,myStopwords)
 
 
 #######################################################
@@ -80,38 +55,36 @@ myCorpusr <- tm_map(myCorpusr, stemDocument)
 #en la colección y las columnas corresponden a términos. 
 #Hay varios esquemas para determinar el valor que cada entrada en la matriz debe tomar. 
 #Uno de estos esquemas es tf-idf . Son útiles en el campo del procesamiento del lenguaje natural
-tdm <- TermDocumentMatrix(myCorpus, control = list(wordLengths = c(1, Inf)))
-tdmr<-TermDocumentMatrix(myCorpusr, control = list(wordLengths = c(1, Inf)))
-###Ejecucion de Analisis###################
-tdm
-tdmr
+          
+texttweets<-Corpus(VectorSource(texttweets))
+tdm <- TermDocumentMatrix(texttweets, control = list(wordLengths = c(1, Inf)))
+(freq.terms <- findFreqTerms(tdm, lowfreq=3))
+term.freq <- rowSums(as.matrix(tdm))
+term.freq <- subset(term.freq, term.freq >=7)
+df <- data.frame(term = names(term.freq), freq = term.freq)
 
-######## Ejecucion de Palabras Mayores a 40
+
+textretweets<-Corpus(VectorSource(textretweets))
+tdmre <- TermDocumentMatrix(textretweets, control = list(wordLengths = c(1, Inf)))
+(freq.termsre <- findFreqTerms(tdmre, lowfreq=3))
+term.freqre <- rowSums(as.matrix(tdmre))
+term.freqre <- subset(term.freqre, term.freqre >=7)
+dfre <- data.frame(term = names(term.freqre), freq = term.freqre)
+
 (freq.terms <- findFreqTerms(tdm, lowfreq=40)
 (freq.termsr <- findFreqTerms(tdmr, lowfreq=40))
 
 #########Grafico de Frecuencias (ggplot 2) para Tweets###############
-
 library(ggplot2)
-term.freq <- rowSums(as.matrix(tdm))
-term.freq <- subset(term.freq, term.freq >=40) ## Extraer los terminos con mayores a 45 repeticiones
-df <- data.frame(term = names(term.freq), freq = term.freq) ### Crear el data.frame con nombre 
-#de las palabras en  y frecuencias en y
 
 p<- ggplot(df, aes(x=term, y=freq)) + geom_bar(stat = "identity") + xlab("Palabra") + ylab("Frecuencia") +coord_flip()
 p <- p + theme(axis.text.x=element_text(angle=45, hjust=1))   
 p ##Se ejecuta la grafica
 
+#########Grafico de Frecuencias (ggplot 2) para retweets###############
 
-#########Grafico de Frecuencias (ggplot 2) para menciones###############
-library(ggplot2)
-term.freqr <- rowSums(as.matrix(tdmr))
-term.freqr <- subset(term.freqr, term.freqr >=40) ## Extraer los terminos con mayores a 45 repeticiones
-dfr <- data.frame(term = names(term.freqr), freq = term.freqr) ### Crear el data.frame con nombre 
-#de las palabras en  y frecuencias en y
-
-pr<- ggplot(dfr, aes(x=term, y=freq)) + geom_bar(stat = "identity") + xlab("Palabra") + ylab("Frecuencia") +coord_flip()
-p <- pr + theme(axis.text.x=element_text(angle=45, hjust=1))   
+pr<- ggplot(dfre, aes(x=term, y=freq)) + geom_bar(stat = "identity") + xlab("Palabra") + ylab("Frecuencia") +coord_flip()
+pr <- pr + theme(axis.text.x=element_text(angle=45, hjust=1))   
 pr ##Se ejecuta la grafica
 
 ################## Nube de Palabras de los Tweets##############################
@@ -123,10 +96,8 @@ word.freq <- sort(rowSums(m), decreasing = T)
 wordcloud(words = names(word.freq), freq = word.freq, min.freq = 1, max.words=200, random.order=FALSE, rot.per=0.35, 
           colors=brewer.pal(8, "Dark2"))
 
-#########################################################
-
 ################## Nube de Palabras de las mensiones##############################
-library(wordcloud)
+
 set.seed(1234) #### Numero aleatorio
 mr <- as.matrix(tdmr)
 ##### Calcula la nube de palabras con un maximo de 200
@@ -142,15 +113,26 @@ wordcloud(words = names(word.freqr), freq = word.freqr, min.freq = 1, max.words=
 
 tdm2 <- removeSparseTerms(tdm, sparse = 0.95)
 m2 <- as.matrix(tdm2)
-
-# cluster terms
+# distancia del cluster
 distMatrix <- dist(scale(m2))
-fit <- hclust(distMatrix, method = "ward.D",  main = "Dendrograma de Palabras por el Criterio de Ward")
-
+fit <- hclust(distMatrix, method = "ward.D")
 plot(fit)
 rect.hclust(fit, k = 6,border="red") # dibuja en rojo los grupoos 
 
-###############2. K-Means Algoritmos de Analisis Grupa;#############################
+############# Para retwitters ############################
+
+tdmre2 <- removeSparseTerms(tdmre, sparse = 0.95)
+me2 <- as.matrix(tdmre2)
+# distancia del cluster
+distMatrixe <- dist(scale(me2))
+fitre <- hclust(distMatrixe, method = "ward.D")
+plot(fitre)
+rect.hclust(fitre, k = 5,border="red") # dibuja en rojo los grupos
+
+
+ 
+ ################################# FALTA MODIFICAR ##################################################
+ ###############2. K-Means Algoritmos de Analisis Grupa;#############################
 
 
 m3 <- t(m2) # Transpone la matriz m2
